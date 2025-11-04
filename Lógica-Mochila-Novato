@@ -1,0 +1,118 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+#define MAX_ITENS 10
+#define MAX_NOME 30
+#define MAX_TIPO 20
+
+typedef struct Item {
+    char nome[MAX_NOME];
+    char tipo[MAX_TIPO];
+    int quantidade;
+} Item;
+
+/* Busca sequencial por nome. Retorna índice do item ou -1 se não encontrado. */
+int buscarItem(Item mochila[], int count, const char *nome) {
+    for (int i = 0; i < count; ++i) {
+        if (strcmp(mochila[i].nome, nome) == 0) return i;
+    }
+    return -1;
+}
+
+void listarItens(Item mochila[], int count) {
+    printf("\n--- Itens na mochila (%d) ---\n", count);
+    if (count == 0) {
+        printf("(nenhum item)\n");
+        return;
+    }
+    for (int i = 0; i < count; ++i) {
+        printf("%d) Nome: %s | Tipo: %s | Quantidade: %d\n", i+1, mochila[i].nome, mochila[i].tipo, mochila[i].quantidade);
+    }
+}
+
+void adicionarItem(Item mochila[], int *count) {
+    if (*count >= MAX_ITENS) {
+        printf("Mochila cheia (max %d itens).\n", MAX_ITENS);
+        return;
+    }
+    char linha[200];
+    printf("Nome do item: ");
+    if (!fgets(linha, sizeof linha, stdin)) return;
+    linha[strcspn(linha, "\r\n")] = '\0';
+    if (strlen(linha) == 0) { printf("Nome vazio. Operação cancelada.\n"); return; }
+
+    /* verifica duplicata */
+    if (buscarItem(mochila, *count, linha) != -1) {
+        printf("Item com esse nome já existe. Use outro nome ou remova o existente primeiro.\n");
+        return;
+    }
+    strncpy(mochila[*count].nome, linha, MAX_NOME-1);
+    mochila[*count].nome[MAX_NOME-1] = '\0';
+
+    printf("Tipo (arma / municao / cura): ");
+    if (!fgets(linha, sizeof linha, stdin)) return;
+    linha[strcspn(linha, "\r\n")] = '\0';
+    if (strlen(linha) == 0) { printf("Tipo vazio. Operação cancelada.\n"); return; }
+    strncpy(mochila[*count].tipo, linha, MAX_TIPO-1);
+    mochila[*count].tipo[MAX_TIPO-1] = '\0';
+
+    printf("Quantidade: ");
+    if (!fgets(linha, sizeof linha, stdin)) return;
+    char *endptr; long q = strtol(linha, &endptr, 10);
+    if (endptr == linha) { printf("Quantidade inválida. Operação cancelada.\n"); return; }
+    mochila[*count].quantidade = (int)q;
+
+    (*count)++;
+    printf("Item cadastrado com sucesso.\n");
+    listarItens(mochila, *count);
+}
+
+void removerItem(Item mochila[], int *count) {
+    if (*count == 0) { printf("Mochila vazia. Nada a remover.\n"); return; }
+    char linha[200];
+    printf("Nome do item a remover: ");
+    if (!fgets(linha, sizeof linha, stdin)) return;
+    linha[strcspn(linha, "\r\n")] = '\0';
+    int idx = buscarItem(mochila, *count, linha);
+    if (idx == -1) { printf("Item não encontrado.\n"); return; }
+    /* shift para preencher posição removida */
+    for (int i = idx; i < (*count) - 1; ++i) mochila[i] = mochila[i+1];
+    (*count)--;
+    printf("Item removido.\n");
+    listarItens(mochila, *count);
+}
+
+void buscarEExibir(Item mochila[], int count) {
+    if (count == 0) { printf("Mochila vazia.\n"); return; }
+    char linha[200];
+    printf("Nome do item a buscar: ");
+    if (!fgets(linha, sizeof linha, stdin)) return;
+    linha[strcspn(linha, "\r\n")] = '\0';
+    int idx = buscarItem(mochila, count, linha);
+    if (idx == -1) { printf("Item não encontrado.\n"); return; }
+    printf("Item encontrado:\n  Nome: %s\n  Tipo: %s\n  Quantidade: %d\n", mochila[idx].nome, mochila[idx].tipo, mochila[idx].quantidade);
+}
+
+int main(void) {
+    Item mochila[MAX_ITENS];
+    int count = 0;
+    char linha[200];
+
+    while (1) {
+    printf("\n--- Menu Mochila ---\n");
+    printf("1) Cadastrar item\n2) Remover item\n3) Listar itens\n4) Buscar item (sequencial)\n5) Sair\n");
+    printf("\nEscolha: ");
+        if (!fgets(linha, sizeof linha, stdin)) break;
+        int opc = (int)strtol(linha, NULL, 10);
+        switch (opc) {
+            case 1: adicionarItem(mochila, &count); break;
+            case 2: removerItem(mochila, &count); break;
+            case 3: listarItens(mochila, count); break;
+            case 4: buscarEExibir(mochila, count); break;
+            case 5: printf("Saindo...\n"); return 0;
+            default: printf("Opção inválida.\n"); break;
+        }
+    }
+    return 0;
+}
