@@ -1,0 +1,198 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_ITENS 10
+#define MAX_NOME 30
+#define MAX_TIPO 20
+
+typedef struct Item {
+	char nome[MAX_NOME];
+	char tipo[MAX_TIPO];
+	int quantidade;
+} Item;
+
+typedef struct No {
+	Item dados;
+	struct No *proximo;
+} No;
+
+/* ----------------- Funções para vetor (sequencial) ----------------- */
+void listar_vetor(Item vet[], int n) {
+	printf("\nItens (vetor) - total %d:\n", n);
+	if (n == 0) { printf(" (nenhum item)\n"); return; }
+	for (int i = 0; i < n; ++i) {
+		printf("%d) Nome: %s | Tipo: %s | Qtde: %d\n", i+1, vet[i].nome, vet[i].tipo, vet[i].quantidade);
+	}
+}
+
+int seq_search_vetor(Item vet[], int n, const char *nome, int *comparisons) {
+	*comparisons = 0;
+	for (int i = 0; i < n; ++i) {
+		(*comparisons)++;
+		if (strcmp(vet[i].nome, nome) == 0) return i;
+	}
+	return -1;
+}
+
+void add_vetor(Item vet[], int *n) {
+	if (*n >= MAX_ITENS) { printf("Mochila cheia (max %d itens).\n", MAX_ITENS); return; }
+	char buf[256];
+	printf("Nome: "); if (!fgets(buf, sizeof buf, stdin)) return; buf[strcspn(buf, "\r\n")] = '\0';
+	if (strlen(buf) == 0) { printf("Nome vazio. Cancelado.\n"); return; }
+	for (int i = 0; i < *n; ++i) if (strcmp(vet[i].nome, buf) == 0) { printf("Item já existe.\n"); return; }
+	strncpy(vet[*n].nome, buf, MAX_NOME-1); vet[*n].nome[MAX_NOME-1] = '\0';
+	printf("Tipo: "); if (!fgets(buf, sizeof buf, stdin)) return; buf[strcspn(buf, "\r\n")] = '\0'; strncpy(vet[*n].tipo, buf, MAX_TIPO-1); vet[*n].tipo[MAX_TIPO-1] = '\0';
+	printf("Quantidade: "); if (!fgets(buf, sizeof buf, stdin)) return; vet[*n].quantidade = (int)strtol(buf, NULL, 10);
+	(*n)++;
+	printf("Item adicionado.\n"); listar_vetor(vet, *n);
+}
+
+void remove_vetor(Item vet[], int *n) {
+	if (*n == 0) { printf("Mochila vazia.\n"); return; }
+	char buf[256];
+	printf("Nome do item a remover: "); if (!fgets(buf, sizeof buf, stdin)) return; buf[strcspn(buf, "\r\n")] = '\0';
+	int idx = -1;
+	for (int i = 0; i < *n; ++i) if (strcmp(vet[i].nome, buf) == 0) { idx = i; break; }
+	if (idx == -1) { printf("Item não encontrado.\n"); return; }
+	for (int i = idx; i < *n - 1; ++i) vet[i] = vet[i+1];
+	(*n)--;
+	printf("Item removido.\n"); listar_vetor(vet, *n);
+}
+
+void sort_vetor(Item vet[], int n) {
+	/* Selection sort por nome (lexicográfico) */
+	for (int i = 0; i < n - 1; ++i) {
+		int min = i;
+		for (int j = i + 1; j < n; ++j) {
+			if (strcmp(vet[j].nome, vet[min].nome) < 0) min = j;
+		}
+		if (min != i) { Item tmp = vet[i]; vet[i] = vet[min]; vet[min] = tmp; }
+	}
+}
+
+int binary_search_vetor(Item vet[], int n, const char *nome, int *comparisons) {
+	int lo = 0, hi = n - 1; *comparisons = 0;
+	while (lo <= hi) {
+		int mid = (lo + hi) / 2;
+		(*comparisons)++;
+		int cmp = strcmp(vet[mid].nome, nome);
+		if (cmp == 0) return mid;
+		if (cmp < 0) lo = mid + 1; else hi = mid - 1;
+	}
+	return -1;
+}
+
+/* ----------------- Funções para lista encadeada ----------------- */
+No* criar_no(const char *nome, const char *tipo, int qtd) {
+	No *p = (No*)malloc(sizeof *p);
+	if (!p) return NULL;
+	strncpy(p->dados.nome, nome, MAX_NOME-1); p->dados.nome[MAX_NOME-1] = '\0';
+	strncpy(p->dados.tipo, tipo, MAX_TIPO-1); p->dados.tipo[MAX_TIPO-1] = '\0';
+	p->dados.quantidade = qtd;
+	p->proximo = NULL;
+	return p;
+}
+
+void listar_lista(No *head) {
+	printf("\nItens (lista encadeada):\n");
+	if (!head) { printf(" (nenhum item)\n"); return; }
+	int i = 1;
+	for (No *p = head; p; p = p->proximo, ++i) {
+		printf("%d) Nome: %s | Tipo: %s | Qtde: %d\n", i, p->dados.nome, p->dados.tipo, p->dados.quantidade);
+	}
+}
+
+void add_lista(No **head) {
+	char nome[256], tipo[256], qtds[64];
+	printf("Nome: "); if (!fgets(nome, sizeof nome, stdin)) return; nome[strcspn(nome, "\r\n")] = '\0';
+	if (strlen(nome) == 0) { printf("Nome vazio. Cancelado.\n"); return; }
+	for (No *p = *head; p; p = p->proximo) if (strcmp(p->dados.nome, nome) == 0) { printf("Item já existe.\n"); return; }
+	printf("Tipo: "); if (!fgets(tipo, sizeof tipo, stdin)) return; tipo[strcspn(tipo, "\r\n")] = '\0';
+	printf("Quantidade: "); if (!fgets(qtds, sizeof qtds, stdin)) return; int q = (int)strtol(qtds, NULL, 10);
+	No *novo = criar_no(nome, tipo, q);
+	if (!novo) { printf("Erro de memória.\n"); return; }
+	if (!*head) *head = novo; else { No *p = *head; while (p->proximo) p = p->proximo; p->proximo = novo; }
+	printf("Item adicionado.\n"); listar_lista(*head);
+}
+
+void remove_lista(No **head) {
+	if (!*head) { printf("Mochila vazia.\n"); return; }
+	char nome[256]; printf("Nome do item a remover: "); if (!fgets(nome, sizeof nome, stdin)) return; nome[strcspn(nome, "\r\n")] = '\0';
+	No *prev = NULL, *cur = *head;
+	while (cur && strcmp(cur->dados.nome, nome) != 0) { prev = cur; cur = cur->proximo; }
+	if (!cur) { printf("Item não encontrado.\n"); return; }
+	if (!prev) *head = cur->proximo; else prev->proximo = cur->proximo;
+	free(cur);
+	printf("Item removido.\n"); listar_lista(*head);
+}
+
+No* seq_search_lista(No *head, const char *nome, int *comparisons) {
+	*comparisons = 0;
+	for (No *p = head; p; p = p->proximo) {
+		(*comparisons)++;
+		if (strcmp(p->dados.nome, nome) == 0) return p;
+	}
+	return NULL;
+}
+
+/* ----------------- Programa principal (menu) ----------------- */
+int main(void) {
+	Item vetor[MAX_ITENS]; int n_vet = 0;
+	No *head = NULL;
+	char opbuf[64];
+
+	while (1) {
+		printf("\n=== Mochila: escolha estrutura ===\n1) Vetor (sequencial)\n2) Lista encadeada\n3) Sair\nEscolha: ");
+		if (!fgets(opbuf, sizeof opbuf, stdin)) break;
+		int escolha = (int)strtol(opbuf, NULL, 10);
+		if (escolha == 3) break;
+
+		if (escolha == 1) {
+			while (1) {
+				printf("\n-- Vetor --\n1) Inserir\n2) Remover por nome\n3) Listar\n4) Busca sequencial\n5) Ordenar (por nome)\n6) Busca binária (após ordenar)\n7) Voltar\nEscolha: ");
+				if (!fgets(opbuf, sizeof opbuf, stdin)) break;
+				int op = (int)strtol(opbuf, NULL, 10);
+				if (op == 7) break;
+				if (op == 1) add_vetor(vetor, &n_vet);
+				else if (op == 2) remove_vetor(vetor, &n_vet);
+				else if (op == 3) listar_vetor(vetor, n_vet);
+				else if (op == 4) {
+					char nome[256]; printf("Nome a buscar (sequencial): "); if (!fgets(nome, sizeof nome, stdin)) break; nome[strcspn(nome, "\r\n")] = '\0';
+					int comps=0; int idx = seq_search_vetor(vetor, n_vet, nome, &comps);
+					if (idx>=0) printf("Encontrado em pos %d | Comparações: %d\n", idx, comps); else printf("Não encontrado | Comparações: %d\n", comps);
+				}
+				else if (op == 5) { sort_vetor(vetor, n_vet); printf("Vetor ordenado por nome.\n"); listar_vetor(vetor, n_vet); }
+				else if (op == 6) {
+					char nome[256]; printf("Nome a buscar (binária): "); if (!fgets(nome, sizeof nome, stdin)) break; nome[strcspn(nome, "\r\n")] = '\0';
+					int comps=0; int idx = binary_search_vetor(vetor, n_vet, nome, &comps);
+					if (idx>=0) printf("Encontrado em pos %d | Comparações (binária): %d\n", idx, comps); else printf("Não encontrado | Comparações (binária): %d\n", comps);
+				}
+				else printf("Opção inválida.\n");
+			}
+		} else if (escolha == 2) {
+			while (1) {
+				printf("\n-- Lista Encadeada --\n1) Inserir\n2) Remover por nome\n3) Listar\n4) Busca sequencial\n5) Voltar\nEscolha: ");
+				if (!fgets(opbuf, sizeof opbuf, stdin)) break;
+				int op = (int)strtol(opbuf, NULL, 10);
+				if (op == 5) break;
+				if (op == 1) add_lista(&head);
+				else if (op == 2) remove_lista(&head);
+				else if (op == 3) listar_lista(head);
+				else if (op == 4) {
+					char nome[256]; printf("Nome a buscar (sequencial): "); if (!fgets(nome, sizeof nome, stdin)) break; nome[strcspn(nome, "\r\n")] = '\0';
+					int comps=0; No *res = seq_search_lista(head, nome, &comps);
+					if (res) printf("Encontrado | Comparações: %d | Nome: %s Tipo: %s Qtde: %d\n", comps, res->dados.nome, res->dados.tipo, res->dados.quantidade);
+					else printf("Não encontrado | Comparações: %d\n", comps);
+				}
+				else printf("Opção inválida.\n");
+			}
+		} else {
+			printf("Opção inválida.\n");
+		}
+	}
+
+	/* liberar lista encadeada */
+	No *p = head; while (p) { No *next = p->proximo; free(p); p = next; }
+	return 0;
+}
